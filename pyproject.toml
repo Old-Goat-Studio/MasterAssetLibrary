@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "master-asset-library"
+description = "One library of every asset you have, shared by your Midgard projects"
+readme = "README.md"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Richard E Rogers" }]
+maintainers = [{ name = "Old Goat Studio" }]
+requires-python = ">=3.12"
+dynamic = ["version"]
+dependencies = [
+    "PySide6>=6.8",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "pytest-qt>=4.4",
+    "ruff>=0.6",
+    "pyinstaller>=6.10",
+    "pillow>=10",
+]
+
+[project.gui-scripts]
+master-library = "master_library.__main__:main"
+
+[tool.setuptools.dynamic]
+version = { attr = "master_library.version.VERSION" }
+
+[tool.setuptools.packages.find]
+include = ["master_library*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
