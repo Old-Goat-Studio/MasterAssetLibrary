@@ -26,7 +26,9 @@ def test_the_window_has_its_menus(qtbot, settings):
     assert window.windowTitle() == APP_NAME
     menus = [a.text() for a in window.menuBar().actions()]
     assert menus == ["&File", "&View", "&Help"]
-    assert str(default_library_dir()) in window.place.text()
+    assert str(settings.library_dir()) in window.title.text()
+    assert window.library is not None  # (made there, on first opening)
+    assert settings.library_dir() != default_library_dir()  # (tests never touch Documents)
 
 
 def test_a_theme_is_kept_for_next_time(qtbot, settings):
@@ -59,7 +61,8 @@ def test_the_library_folder_is_kept(qtbot, settings, tmp_path, monkeypatch):
     qtbot.addWidget(window)
     window.choose_library_dir()
     assert Settings(settings.dir).library_dir() == chosen
-    assert str(chosen) in window.place.text()
+    assert str(chosen) in window.title.text()
+    assert (chosen / "library.json").is_file()
 
 
 def test_the_about_box_follows_the_about_scheme(qtbot):

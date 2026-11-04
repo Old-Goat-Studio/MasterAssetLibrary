@@ -7,4 +7,6 @@ from master_library.settings import Settings
 @pytest.fixture
 def settings(tmp_path):
     """Settings in a temporary folder, never the user's own."""
-    return Settings(tmp_path / "settings")
+    s = Settings(tmp_path / "settings")
+    s.set("library_dir", str(tmp_path / "Library"))
+    return s

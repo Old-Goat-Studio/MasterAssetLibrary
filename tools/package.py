@@ -63,6 +63,14 @@ def build_program() -> None:
             *data(ICON_PNG, "."),
             *data(source_info, "."),
             ROOT / "tools" / "launcher.py")
+    # Qt's glTF loader for the player's models: PyInstaller can't see it is needed (the player's
+    # 3D view is QML, loaded from a string).
+    import PySide6
+
+    importers = Path(PySide6.__file__).parent / "plugins" / "assetimporters"
+    if importers.is_dir():
+        shutil.copytree(importers, APP / "_internal" / "PySide6" / "plugins" / "assetimporters",
+                        dirs_exist_ok=True)
     for name in ("LICENSE", "NOTICE", "THIRD_PARTY_NOTICES.md"):
         shutil.copy2(ROOT / name, APP / name)
 
