@@ -150,7 +150,7 @@ def test_the_licence_filter_finds_purchased_and_share_alike_assets(qtbot, settin
     assert shown("Any licence") == ["Free", "Mural", "Village"]
     assert shown("Purchased") == ["Village"]
     assert shown("Share-alike (CC BY-SA)") == ["Mural"]
-    assert shown("Free to share (CC0, CC BY)") == ["Free"]
+    assert shown("Free to share (CC0, CC BY, OFL)") == ["Free"]
     assert shown("Needs a credit") == ["Mural"]
     window.licence_filter.setCurrentIndex(0)
     window.search.setText("example asset store")  # (found by its seller)
@@ -184,3 +184,14 @@ def test_a_combined_map_is_the_metallic_and_roughness():
              ("Color", "Normal", "Ambient occlusion", "Emissive", "Metallic", "Combined")]
     assert roles == ["color", "normal", "occlusion", "emissive", "metallic",
                      "metallic_roughness"]
+
+
+def test_a_font_under_the_open_font_license_is_free_to_ship(tmp_path):
+    root = tmp_path / "M"
+    lf.Library.create(root)
+    font = tmp_path / "Inconsolata.otf"
+    font.write_bytes(b"OTTO" + bytes(60))
+    a = importing.import_assets(root, [font], "fonts", "Inconsolata", importing.Details(
+        licence="OFL-1.1", author="Raph Levien")).assets[0]
+    assert lf.problems(a) == [] and lf.may_give_away(a) and not lf.needs_credit(a)
+    assert "Open Font License" in licence_note("OFL-1.1")

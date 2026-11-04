@@ -119,6 +119,7 @@ asset's fingerprint changes when, and only when, its files do.
 | `CC-BY-SA-3.0` | CC BY-SA 3.0 | yes | as CC BY-SA 4.0 |
 | `Purchased` | Purchased | if its licence asks (`purchase.credit`) | **no** |
 | `Own-Work` | Own work (all rights reserved) | no | **no** |
+| `OFL-1.1` | SIL Open Font License 1.1 | no | yes (not sold on its own; changed versions renamed) |
 
 - **Credit needed:** the asset's `author`, and its `title` or `source`, are required, and games
   using it list its credit (`"Rusty Plates" by Ana Ruiz (https://example.org/rusty), CC BY 4.0

@@ -34,6 +34,9 @@ def licence_note(code: str) -> str:
     if code == lf.PURCHASED:
         return ("Bought: who sold it, and their licence (kept with it), are needed. Its "
                 "original files are never given away: games use it, sharing a project warns.")
+    if code == "OFL-1.1":
+        return ("A font under the SIL Open Font License: free to use and ship with your games "
+                "(not to sell on its own; a changed version gets a new name). No credit needed.")
     if code == lf.OWN_WORK:
         return ("Your own work, all rights reserved: its artist (the author) is needed. Your "
                 "games use it; its original files are never given away (sharing a project "

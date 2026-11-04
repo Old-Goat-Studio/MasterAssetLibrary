@@ -59,6 +59,9 @@ LICENCES: dict[str, Licence] = {
                             True, True, True),
     "Purchased": Licence("Purchased", "", False, False, False),
     "Own-Work": Licence("Own work (all rights reserved)", "", False, False, False),
+    # Fonts: free to use and ship (not to sell alone; changed versions renamed).
+    "OFL-1.1": Licence("SIL Open Font License 1.1", "https://openfontlicense.org/", False, False,
+                       True),
 }
 PURCHASED = "Purchased"
 OWN_WORK = "Own-Work"  # your own, all rights reserved: your games use it, no one else

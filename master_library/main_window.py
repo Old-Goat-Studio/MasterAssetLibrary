@@ -60,7 +60,7 @@ def size_text(size: int) -> str:
 # The licence filter: (label, which licences).
 LICENCE_FILTERS = (
     ("Any licence", ()),
-    ("Free to share (CC0, CC BY)", ("CC0-1.0", "CC-BY-4.0", "CC-BY-3.0")),
+    ("Free to share (CC0, CC BY, OFL)", ("CC0-1.0", "CC-BY-4.0", "CC-BY-3.0", "OFL-1.1")),
     ("Share-alike (CC BY-SA)", ("CC-BY-SA-4.0", "CC-BY-SA-3.0")),
     ("Purchased", (lf.PURCHASED,)),
     ("Own work", (lf.OWN_WORK,)),
