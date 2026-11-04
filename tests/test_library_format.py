@@ -225,3 +225,12 @@ def test_the_document_lists_every_type_and_licence():
     for key in lf.LICENCES:
         assert f"| `{key}` |" in text
     assert "Version 2" in text and '"format": 2' in text
+
+
+def test_a_quick_check_leaves_the_files_contents_alone(tmp_path):
+    a = make_asset(tmp_path)
+    (a.folder / "rusty_basecolor.png").write_bytes(b"repainted")
+    assert lf.problems(a, contents=False) == []  # (lists of many assets)
+    assert any("has changed" in p for p in lf.problems(a))  # (the asset selected)
+    (a.folder / "rusty_basecolor.png").unlink()
+    assert any("is missing" in p for p in lf.problems(a, contents=False))

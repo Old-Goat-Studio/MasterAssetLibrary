@@ -37,6 +37,8 @@ from .importing import CollectResult, collect
 from .player import AssetPlayer, choices
 from .roles import texture_set
 from .settings import Settings, projects_dir
+from .split import SplitError
+from .split_dialog import SplitDialog, can_split
 from .themes import QSS_PREFIX, THEMES, ThemeApplier, qss_themes, theme_title
 
 ROLE = Qt.ItemDataRole.UserRole
@@ -119,6 +121,11 @@ class MainWindow(QMainWindow):
         bar.addWidget(self.import_button)
         self.details_button = QPushButton("Details…")
         self.details_button.clicked.connect(self.edit_details)
+        self.split_button = QPushButton("Split Pack…")
+        self.split_button.setToolTip("A model holding many objects (a pack of trees, rocks…) "
+                                     "made into one asset per object")
+        self.split_button.clicked.connect(lambda: self.split_selected())
+        bar.addWidget(self.split_button)
         self.remove_button = QPushButton("Remove")
         self.remove_button.clicked.connect(self.remove_selected)
         self.show_button = QPushButton("Show in Folder")
@@ -336,7 +343,7 @@ class MainWindow(QMainWindow):
             item.setData(0, ROLE, asset.id)
             if (icon := self.thumbnail(asset)) is not None:
                 item.setIcon(0, icon)
-            if lf.problems(asset):
+            if lf.problems(asset, contents=False):  # (quick: the selected one is read)
                 item.setForeground(0, Qt.GlobalColor.red)
             if selected and asset.id == selected.id:
                 item.setSelected(True)
@@ -374,6 +381,7 @@ class MainWindow(QMainWindow):
             self.show_files(asset)
         for b in (self.details_button, self.remove_button):
             b.setEnabled(asset is not None)
+        self.split_button.setEnabled(asset is not None and can_split(asset))
         if asset is None:
             text = "Select an asset to see it." if self.library else ""
             if self.unreadable:
@@ -492,6 +500,23 @@ class MainWindow(QMainWindow):
         if run and dialog.exec() and dialog.result and dialog.result.assets:
             self.refresh()
             self.select(dialog.result.assets[0].id)
+        return dialog
+
+    def split_selected(self, run: bool = True) -> SplitDialog | None:
+        """Split Pack…: the selected model's objects made assets of their own."""
+        asset = self.selected()
+        if asset is None or self.library is None or not can_split(asset):
+            return None
+        try:
+            dialog = SplitDialog(self.library, asset, self)
+        except (SplitError, OSError, ValueError) as e:
+            QMessageBox.warning(self, "Split Pack", f"It can't be split: {e}")
+            return None
+        if run and dialog.exec():
+            self.player.show_asset(None)
+            self.refresh()
+            if dialog.result and dialog.result.assets:
+                self.select(dialog.result.assets[0].id)
         return dialog
 
     def collect_dialog(self, project: Path | None = None) -> CollectResult | None:

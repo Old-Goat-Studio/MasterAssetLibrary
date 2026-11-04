@@ -4,6 +4,7 @@ write outside the library, files must be what their names say, and only the type
 hold are kept), and collecting what a Midgard project's own library already has.
 
 Assets are always copied in, never linked; the originals stay where they are."""
+import contextlib
 import shutil
 import tempfile
 import zipfile
@@ -318,6 +319,20 @@ def model_count(sources: list[Path]) -> int:
     return n
 
 
+def objects_in(sources: list[Path]) -> int:
+    """How many objects a lone model file holds (a pack of trees, rocks …): 0 when the sources
+    aren't one model file, or it can't be split."""
+    files = [Path(s) for s in sources if Path(s).suffix.lower() in MODEL_SUFFIXES]
+    if len(files) != 1 or any(Path(s).is_dir() or Path(s).suffix.lower() == ".zip"
+                              for s in sources):
+        return 0
+    from .split import Pack, SplitError
+    try:
+        return len(Pack.read(files[0]).objects())
+    except (SplitError, OSError, ValueError, KeyError, IndexError):
+        return 0
+
+
 def pretty(stem: str) -> str:
     """'oak_tree-01' -> 'Oak tree 01'."""
     import re
@@ -403,7 +418,10 @@ def import_assets(root: Path, sources: list[Path], type_: str, name: str,
             groups = [(name, kept)]
             if split and type_ in ("models", "objects"):
                 found = model_groups(kept)
-                if sum(1 for stem, _g in found if stem) > 1:
+                models = [(stem, g) for stem, g in found if stem]
+                if len(models) == 1:  # (one file of many objects: one asset each)
+                    groups = _object_groups(name, models[0][1], Path(scratch)) or groups
+                elif len(models) > 1:
                     groups = [(f"{name}: {pretty(stem)}", g) for stem, g in found if stem]
                     leftover = next((g for stem, g in found if not stem), [])
                     result.skipped += [(r, "with no one model") for _q, r in leftover]
@@ -416,8 +434,31 @@ def import_assets(root: Path, sources: list[Path], type_: str, name: str,
                 result.assets.append(asset)
                 result.warnings += [f"{asset.name}: {w}" for w in _missing_parts(asset)]
     finally:
-        shutil.rmtree(work, ignore_errors=True)
+        remove_if_empty(work)  # (its own scratch is gone: others' may not be)
     return result
+
+
+def remove_if_empty(folder: Path) -> None:
+    """The library's scratch folder removed once nothing is using it."""
+    with contextlib.suppress(OSError):
+        folder.rmdir()
+
+
+def _object_groups(name: str, group: list[tuple[Path, str]],
+                   scratch: Path) -> list[tuple[str, list[tuple[Path, str]]]]:
+    """A lone model file's objects, each made a model file of its own, with the pack's text
+    (its licence, read-me) beside each; [] if it holds one object, or can't be split."""
+    from .split import Pack, SplitError, split_to
+    model = next(p for p, _rel in group if p.suffix.lower() in MODEL_SUFFIXES)
+    text = [(p, rel) for p, rel in group if p.suffix.lower() in TEXT]
+    try:
+        objects = Pack.read(model).objects()
+        if len(objects) < 2:
+            return []
+        made = split_to(model, scratch / "objects", objects)
+    except (SplitError, OSError, ValueError, KeyError, IndexError):
+        return []
+    return [(f"{name}: {obj.name}", [(glb, glb.name), *text]) for obj, glb in made]
 
 
 def _missing_parts(asset: lf.Asset) -> list[str]:

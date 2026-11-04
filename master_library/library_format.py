@@ -262,9 +262,10 @@ def record_files(asset: Asset) -> bool:
     return changed
 
 
-def problems(asset: Asset) -> list[str]:
+def problems(asset: Asset, contents: bool = True) -> list[str]:
     """What is wrong with an asset (none: all well): its type, licence, credit, purchase and
-    files."""
+    files (and, with `contents`, whether its files are still as recorded: that reads them all,
+    so lists of many assets leave it out)."""
     out = []
     if asset.type not in TYPES:
         out.append(f"there is no asset type '{asset.type}'")
@@ -294,7 +295,7 @@ def problems(asset: Asset) -> list[str]:
         path = asset.folder / f.get("path", "")
         if not path.is_file():
             out.append(f"{f.get('path')} is missing")
-        elif f.get("sha256") and sha256(path) != f["sha256"]:
+        elif contents and f.get("sha256") and sha256(path) != f["sha256"]:
             out.append(f"{f.get('path')} has changed since it was recorded")
     return out
 

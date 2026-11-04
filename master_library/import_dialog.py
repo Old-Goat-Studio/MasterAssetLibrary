@@ -122,6 +122,7 @@ class ImportDialog(QDialog):
         self.result: importing.ImportResult | None = None
         self.last_report = ""
         self.quiet = False  # (tests: reports aren't shown)
+        self.split_answer = False  # (tests, quiet: the answer to "one asset, or one each?")
         layout = QVBoxLayout(self)
         layout.addWidget(QLabel("Files (copied into the library: the originals stay where "
                                 "they are)"))
@@ -233,12 +234,18 @@ class ImportDialog(QDialog):
                 combo.setCurrentIndex(combo.findData(role))
 
     # ---- importing ----------------------------------------------------------------------------
-    def ask_split(self, models: int) -> bool:
-        """A pack of several models: one asset, or one for each? (True: one each.)"""
+    def ask_split(self, models: int, what: str = "models") -> bool:
+        """A pack of several models (or one model file of several objects): one asset, or one
+        for each? (True: one each.)"""
+        if self.quiet:
+            return self.split_answer
+        holds = (f"These files hold {models} models" if what == "models" else
+                 f"This model file holds {models} objects (a pack)")
         box = QMessageBox(QMessageBox.Icon.Question, "Import",
-                          f"These files hold {models} models. Import them as one asset, or as "
-                          "one asset for each model (each with its own textures, and the pack's "
-                          "licence)?", parent=self)
+                          f"{holds}. Import them as one asset, or as one asset for each (each "
+                          "with only its own textures, and the pack's licence)? (Split Pack… "
+                          "in the library can also do it later, with more choices.)",
+                          parent=self)
         each = box.addButton(f"One for Each ({models})", QMessageBox.ButtonRole.YesRole)
         box.addButton("One Asset", QMessageBox.ButtonRole.NoRole)
         box.setDefaultButton(each)
@@ -255,7 +262,11 @@ class ImportDialog(QDialog):
             return False
         if split is None:
             models = importing.model_count(sources) if type_ in ("models", "objects") else 0
-            split = models > 1 and self.ask_split(models)
+            if models > 1:
+                split = self.ask_split(models)
+            else:  # (one file: a pack of objects, perhaps)
+                objects = importing.objects_in(sources) if models == 1 else 0
+                split = objects > 1 and self.ask_split(objects, "objects")
         try:
             result = importing.import_assets(self.library.root, sources, type_,
                                              self.form.name.text(), self.form.details(),
