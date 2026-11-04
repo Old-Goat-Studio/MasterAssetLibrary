@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 """Import: files, a folder or a zip into the library, with what they are, their tags and their
-licence. (Purchased assets' details come in step 5.)"""
+licence (and, for a purchased one, where it was bought)."""
 from pathlib import Path
 
 from PySide6.QtCore import Qt
@@ -26,7 +26,8 @@ from PySide6.QtWidgets import (
 
 from . import importing
 from . import library_format as lf
-from .details import EDITABLE_LICENCES, licence_label, parse_tags
+from .details import LICENCE_CHOICES, licence_label, licence_note, parse_tags
+from .purchase import PurchaseForm
 from .roles import TEXTURE_ROLES, guess_role
 
 
@@ -56,7 +57,7 @@ class ImportForm(QWidget):
         self.tags.setPlaceholderText("words to find it by, with commas between")
         form.addRow("Tags", self.tags)
         self.licence = QComboBox()
-        for code in EDITABLE_LICENCES:
+        for code in LICENCE_CHOICES:
             self.licence.addItem(licence_label(code), code)
         self.licence.currentIndexChanged.connect(lambda _i: self._note())
         form.addRow("Licence", self.licence)
@@ -72,6 +73,8 @@ class ImportForm(QWidget):
         self.note.setWordWrap(True)
         self.note.setEnabled(False)
         form.addRow("", self.note)
+        self.purchase = PurchaseForm()
+        form.addRow(self.purchase)
         self._kinds()
         self._note()
 
@@ -91,14 +94,9 @@ class ImportForm(QWidget):
         self.category_label.setVisible(visible)
 
     def _note(self) -> None:
-        licence = lf.LICENCES[self.licence.currentData()]
-        notes = ["Its author, and its title or source, are needed for its credit."
-                 if licence.credit else "No credit is needed (naming the author is kind all "
-                 "the same)."]
-        if licence.share_alike:
-            notes.append("Share-alike: a game that changes it must offer the changed asset "
-                         "under the same licence.")
-        self.note.setText(" ".join(notes))
+        code = self.licence.currentData()
+        self.note.setText(licence_note(code))
+        self.purchase.setVisible(code == lf.PURCHASED)
 
     def type_(self) -> str:
         return self.type.currentData()
@@ -111,7 +109,9 @@ class ImportForm(QWidget):
             category=category, description=self.description.toPlainText().strip(),
             tags=parse_tags(self.tags.text()), licence=self.licence.currentData(),
             author=self.author.text().strip(), source=self.source.text().strip(),
-            title=self.title.text().strip())
+            title=self.title.text().strip(),
+            purchase=self.purchase.values() if self.licence.currentData() == lf.PURCHASED
+            else None)
 
 
 class ImportDialog(QDialog):
@@ -137,6 +137,7 @@ class ImportDialog(QDialog):
         clear = QPushButton("Clear")
         clear.clicked.connect(self.sources.clear)
         clear.clicked.connect(self.refresh_pictures)
+        clear.clicked.connect(self.refresh_text_files)
         row.addWidget(clear)
         layout.addLayout(row)
         self.form = ImportForm(type_)
@@ -167,6 +168,15 @@ class ImportDialog(QDialog):
         if not self.form.name.text() and paths:  # (named after the first, to begin with)
             self.form.name.setText(importing.pretty(Path(paths[0]).stem))
         self.refresh_pictures()
+        self.refresh_text_files()
+
+    def refresh_text_files(self) -> None:
+        """The text files among the sources: the seller's licence may be one of them."""
+        try:
+            found = importing.text_files_in(self.source_paths())
+        except (lf.LibraryError, OSError):
+            found = []
+        self.form.purchase.set_files(found)
 
     def _add_files(self) -> None:
         files, _ = QFileDialog.getOpenFileNames(self, "Files to import")
@@ -238,6 +248,11 @@ class ImportDialog(QDialog):
     def do_import(self, split: bool | None = None) -> bool:
         type_ = self.form.type_()
         sources = self.source_paths()
+        extra = self.form.purchase.extra_file
+        if self.form.licence.currentData() == lf.PURCHASED and extra is not None:
+            sources.append(extra)  # (the seller's licence, from elsewhere: copied in with it)
+        if not self.confirm_share_alike():
+            return False
         if split is None:
             models = importing.model_count(sources) if type_ in ("models", "objects") else 0
             split = models > 1 and self.ask_split(models)
@@ -267,6 +282,17 @@ class ImportDialog(QDialog):
             self._say("\n".join(lines))
         self.accept()
         return True
+
+    def confirm_share_alike(self) -> bool:
+        """A share-alike licence is imported only when meant (always, quietly, in tests)."""
+        licence = lf.LICENCES.get(self.form.licence.currentData())
+        if licence is None or not licence.share_alike or self.quiet:
+            return True
+        answer = QMessageBox.question(
+            self, "Share-alike", f"{licence.name} is share-alike: a game that changes this "
+            "asset (recolours it, cuts it up, builds on it) must offer the changed asset under "
+            f"{licence.name} too. Import it all the same?")
+        return answer == QMessageBox.StandardButton.Yes
 
     def _say(self, text: str, warning: bool = False) -> None:
         self.last_report = text

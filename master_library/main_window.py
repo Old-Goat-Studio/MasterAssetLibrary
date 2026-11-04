@@ -55,13 +55,33 @@ def size_text(size: int) -> str:
     return f"{size} bytes"
 
 
+# The licence filter: (label, which licences).
+LICENCE_FILTERS = (
+    ("Any licence", ()),
+    ("Free to share (CC0, CC BY)", ("CC0-1.0", "CC-BY-4.0", "CC-BY-3.0")),
+    ("Share-alike (CC BY-SA)", ("CC-BY-SA-4.0", "CC-BY-SA-3.0")),
+    ("Purchased", (lf.PURCHASED,)),
+    ("Needs a credit", ("credit",)),
+)
+
+
+def licence_matches(asset: lf.Asset, which: tuple[str, ...]) -> bool:
+    if not which:
+        return True
+    if which == ("credit",):
+        return lf.needs_credit(asset)
+    return asset.licence in which
+
+
 def matches(asset: lf.Asset, words: str, tag: str) -> bool:
     """Whether an asset is found by a search (every word somewhere in its name, description,
-    tags, author, title or category) and has the tag (if one is chosen)."""
+    tags, author, title, category or seller) and has the tag (if one is chosen)."""
     if tag and tag not in asset.tags:
         return False
+    bought = asset.purchase or {}
+    seller = f"{bought.get('seller', '')} {bought.get('product', '')}"
     text = " ".join([asset.name, asset.description, " ".join(asset.tags), asset.author,
-                     asset.title, asset.category]).lower()
+                     asset.title, asset.category, seller]).lower()
     return all(w in text for w in words.lower().split())
 
 
@@ -129,6 +149,12 @@ class MainWindow(QMainWindow):
         self.tag.setToolTip("Only the assets with this tag")
         self.tag.currentIndexChanged.connect(lambda _i: self.show_list())
         find.addWidget(self.tag)
+        self.licence_filter = QComboBox()
+        self.licence_filter.setToolTip("Only the assets with these licences")
+        for label, which in LICENCE_FILTERS:
+            self.licence_filter.addItem(label, which)
+        self.licence_filter.currentIndexChanged.connect(lambda _i: self.show_list())
+        find.addWidget(self.licence_filter)
         middle_layout.addLayout(find)
         self.tree = QTreeWidget()
         self.tree.setHeaderLabels(["Name", "Licence", "Size", "Tags"])
@@ -278,8 +304,10 @@ class MainWindow(QMainWindow):
 
     def shown_assets(self) -> list[lf.Asset]:
         type_ = self.current_type()
+        which = tuple(self.licence_filter.currentData() or ())
         return [a for a in self.assets if (not type_ or a.type == type_)
-                and matches(a, self.search.text(), self.tag.currentData() or ALL_TAGS)]
+                and matches(a, self.search.text(), self.tag.currentData() or ALL_TAGS)
+                and licence_matches(a, which)]
 
     def show_list(self) -> None:
         """The assets of the chosen type that the search and tag find, in their folders (the
@@ -357,6 +385,15 @@ class MainWindow(QMainWindow):
         rows.append(f"Licence: {licence_label(asset.licence)}")
         if lf.share_alike(asset):
             rows.append("<i>Share-alike: changed versions under the same licence.</i>")
+        if asset.licence == lf.PURCHASED and asset.purchase:
+            p = asset.purchase
+            bought = ", ".join(x for x in (p.get("product"), f"from {p['seller']}"
+                                           if p.get("seller") else "", p.get("date"),
+                                           f"order {p['order']}" if p.get("order") else "")
+                               if x)
+            rows.append(f"Bought: {bought}")
+            if p.get("licence_file"):
+                rows.append(f"The seller's licence: {p['licence_file']}")
         if not lf.may_give_away(asset):
             rows.append("<i>Its original files may not be given away.</i>")
         for label, value in (("Author", asset.author), ("Title", asset.title),

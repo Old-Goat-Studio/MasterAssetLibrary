@@ -202,6 +202,14 @@ def images_in(sources: list[Path]) -> list[str]:
                 if p.suffix.lower() in IMAGES]
 
 
+def text_files_in(sources: list[Path]) -> list[str]:
+    """The text files (licences, read-mes) files, folders and zips hold, by their path in an
+    asset, to choose the seller's licence among them before importing."""
+    with tempfile.TemporaryDirectory(prefix="master_text_") as scratch:
+        return [rel for p, rel in gathered([Path(s) for s in sources], Path(scratch))
+                if p.suffix.lower() in TEXT]
+
+
 def _combined(roughness: Path | None, metallic: Path | None, out: Path) -> Path | None:
     """The combined picture glTF reads (roughness in green, metallic in blue), from separate
     roughness and metallic maps (a missing one: rough, not metal)."""
