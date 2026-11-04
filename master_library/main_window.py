@@ -32,9 +32,11 @@ from . import APP_NAME
 from . import library_format as lf
 from .about import AboutDialog
 from .details import DetailsDialog, licence_label
+from .import_dialog import ImportDialog
+from .importing import CollectResult, collect
 from .player import AssetPlayer, choices
 from .roles import texture_set
-from .settings import Settings
+from .settings import Settings, projects_dir
 from .themes import QSS_PREFIX, THEMES, ThemeApplier, qss_themes, theme_title
 
 ROLE = Qt.ItemDataRole.UserRole
@@ -91,6 +93,9 @@ class MainWindow(QMainWindow):
         bar = QHBoxLayout()
         self.title = QLabel()
         bar.addWidget(self.title, 1)
+        self.import_button = QPushButton("Import…")
+        self.import_button.clicked.connect(lambda: self.import_dialog())
+        bar.addWidget(self.import_button)
         self.details_button = QPushButton("Details…")
         self.details_button.clicked.connect(self.edit_details)
         self.remove_button = QPushButton("Remove")
@@ -162,9 +167,16 @@ class MainWindow(QMainWindow):
         outer.addWidget(split, 1)
         self.setCentralWidget(central)
         self.types.setCurrentRow(0)
+        self.setAcceptDrops(True)  # (files dropped on the window: Import, with them)
 
     def _build_menus(self) -> None:
         file = self.menuBar().addMenu("&File")
+        import_ = file.addAction("&Import…")
+        import_.setShortcut(QKeySequence("Ctrl+I"))
+        import_.triggered.connect(lambda: self.import_dialog())
+        collect = file.addAction("&Collect from a Midgard Project…")
+        collect.triggered.connect(lambda: self.collect_dialog())
+        file.addSeparator()
         folder = file.addAction("Library &Folder…")
         folder.triggered.connect(self.choose_library_dir)
         reload_ = file.addAction("&Reload")
@@ -242,7 +254,8 @@ class MainWindow(QMainWindow):
             self.title.setText(f"{self.library.name}: {n} asset{'' if n == 1 else 's'}, "
                                f"{size_text(sum(a.size for a in self.assets))}  —  "
                                f"{self.library.root}")
-        self.show_button.setEnabled(self.library is not None)
+        for b in (self.show_button, self.import_button):
+            b.setEnabled(self.library is not None)
         for i in range(self.types.count()):
             item = self.types.item(i)
             key = item.data(ROLE)
@@ -429,6 +442,56 @@ class MainWindow(QMainWindow):
             os.startfile(folder)  # noqa: S606 (the user's own folder, in Explorer)
         else:
             subprocess.Popen(["xdg-open", str(folder)])
+
+    def import_dialog(self, sources=None, run: bool = True) -> ImportDialog | None:
+        """Import (with files to begin with, if given): the new assets shown when it's done."""
+        if self.library is None:
+            return None
+        type_ = self.current_type() or "models"
+        dialog = ImportDialog(self.library, type_, self)
+        if sources:
+            dialog.add_sources(sources)
+        if run and dialog.exec() and dialog.result and dialog.result.assets:
+            self.refresh()
+            self.select(dialog.result.assets[0].id)
+        return dialog
+
+    def collect_dialog(self, project: Path | None = None) -> CollectResult | None:
+        """A Midgard project's library assets collected into the Master."""
+        if self.library is None:
+            return None
+        if project is None:
+            chosen = QFileDialog.getExistingDirectory(
+                self, "Collect from a Midgard Project (its folder)",
+                str(projects_dir()))
+            if not chosen:
+                return None
+            project = Path(chosen)
+        try:
+            result = collect(self.library, project)
+        except (lf.LibraryError, OSError) as e:
+            QMessageBox.warning(self, "Collect", f"Nothing collected: {e}")
+            return None
+        self.refresh()
+        if result.collected:
+            self.select(result.collected[0].id)
+        lines = [result.summary()]
+        for name, why in result.refused:
+            lines.append(f"  {name}: {why}")
+        self.last_collect_report = "\n".join(lines)
+        if not getattr(self, "quiet", False):
+            QMessageBox.information(self, "Collect", self.last_collect_report)
+        return result
+
+    def dragEnterEvent(self, event) -> None:  # noqa: N802 - Qt's name
+        if event.mimeData().hasUrls() and self.library is not None:
+            event.acceptProposedAction()
+
+    def dropEvent(self, event) -> None:  # noqa: N802 - Qt's name
+        paths = [u.toLocalFile() for u in event.mimeData().urls() if u.isLocalFile()]
+        if paths:
+            event.acceptProposedAction()
+            self.import_dialog(paths)
 
     def closeEvent(self, event: QCloseEvent) -> None:  # noqa: N802 - Qt's name
         self.player.stop()

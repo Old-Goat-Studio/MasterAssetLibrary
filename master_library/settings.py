@@ -26,6 +26,12 @@ def default_library_dir() -> Path:
     return Path(documents or Path.home()) / "Master Asset Library"
 
 
+def projects_dir() -> Path:
+    """Where Midgard makes projects, to begin looking for one (Documents/Midgard Projects)."""
+    documents = QStandardPaths.writableLocation(QStandardPaths.StandardLocation.DocumentsLocation)
+    return Path(documents or Path.home()) / "Midgard Projects"
+
+
 class Settings:
     """Settings, written atomically so a crash never leaves half a file."""
 
