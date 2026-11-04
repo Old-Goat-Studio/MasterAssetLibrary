@@ -58,8 +58,10 @@ LICENCES: dict[str, Licence] = {
     "CC-BY-SA-3.0": Licence("CC BY-SA 3.0", "https://creativecommons.org/licenses/by-sa/3.0/",
                             True, True, True),
     "Purchased": Licence("Purchased", "", False, False, False),
+    "Own-Work": Licence("Own work (all rights reserved)", "", False, False, False),
 }
 PURCHASED = "Purchased"
+OWN_WORK = "Own-Work"  # your own, all rights reserved: your games use it, no one else
 # A version 1 asset's id: made from its path in this namespace, so it is the same every time.
 _V1_NAMESPACE = uuid.UUID("6a1d4f0e-5b8c-4e2a-9f37-0c1d2e3f4a5b")
 
@@ -275,6 +277,8 @@ def problems(asset: Asset) -> list[str]:
             out.append("it needs crediting: its author is needed")
         if not (asset.title.strip() or asset.source.strip()):
             out.append("it needs crediting: its title or source is needed")
+    if asset.licence == OWN_WORK and not asset.author.strip():
+        out.append("it is your own work: its artist (author) is needed")
     if asset.licence == PURCHASED:
         p = asset.purchase or {}
         if not str(p.get("seller", "")).strip():

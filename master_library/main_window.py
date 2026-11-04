@@ -61,6 +61,7 @@ LICENCE_FILTERS = (
     ("Free to share (CC0, CC BY)", ("CC0-1.0", "CC-BY-4.0", "CC-BY-3.0")),
     ("Share-alike (CC BY-SA)", ("CC-BY-SA-4.0", "CC-BY-SA-3.0")),
     ("Purchased", (lf.PURCHASED,)),
+    ("Own work", (lf.OWN_WORK,)),
     ("Needs a credit", ("credit",)),
 )
 

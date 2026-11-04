@@ -118,12 +118,15 @@ asset's fingerprint changes when, and only when, its files do.
 | `CC-BY-SA-4.0` | CC BY-SA 4.0 | yes | yes, with the credit, and changed versions under the same licence |
 | `CC-BY-SA-3.0` | CC BY-SA 3.0 | yes | as CC BY-SA 4.0 |
 | `Purchased` | Purchased | if its licence asks (`purchase.credit`) | **no** |
+| `Own-Work` | Own work (all rights reserved) | no | **no** |
 
 - **Credit needed:** the asset's `author`, and its `title` or `source`, are required, and games
   using it list its credit (`"Rusty Plates" by Ana Ruiz (https://example.org/rusty), CC BY 4.0
   (https://creativecommons.org/licenses/by/4.0/)`) in their CREDITS.txt.
 - **Share-alike (CC BY-SA)** is marked, so you decide each time: a game that changes the asset
   (recolours it, cuts it up) must offer the changed asset under CC BY-SA too.
+- **Own work** is the library owner's own, all rights reserved: its `author` (the artist) is
+  required; your games use it, and its original files are never given away (as purchased ones).
 - **Purchased** assets may be used in your games (where they are cooked into the game's own
   files) but their original files are never given away: not copied into anything shared (sample
   sets, a project sent to someone else) without a warning first.
@@ -171,7 +174,8 @@ one, what was bought and from whom if purchased, and its files. Programs never r
 ## Version 1
 
 Midgard 5.13a's assets (`"format": 1`) have no `id`, `version`, `tags`, `fingerprint`,
-`purchase` or `origin`, and only the CC0 and CC BY licences. Read as version 2, they get an `id`
+`purchase` or `origin`, and only the CC0 and CC BY licences. (`Own-Work` was added to version 2
+before any library was shared; readers that don't know a licence report it as a problem.) Read as version 2, they get an `id`
 (a UUID made from their library path, so it stays the same each time they are read), version 1,
 no tags, and the fingerprint of their files. They are written back as version 2 only when they
 are changed.

@@ -34,6 +34,10 @@ def licence_note(code: str) -> str:
     if code == lf.PURCHASED:
         return ("Bought: who sold it, and their licence (kept with it), are needed. Its "
                 "original files are never given away: games use it, sharing a project warns.")
+    if code == lf.OWN_WORK:
+        return ("Your own work, all rights reserved: its artist (the author) is needed. Your "
+                "games use it; its original files are never given away (sharing a project "
+                "warns).")
     notes = ["Its author, and its title or source, are needed for its credit."
              if licence.credit else "No credit is needed (naming the author is kind all the "
              "same)."]

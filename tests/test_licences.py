@@ -158,3 +158,29 @@ def test_the_licence_filter_finds_purchased_and_share_alike_assets(qtbot, settin
     window.select(window.shown_assets()[0].id)
     assert "Bought: from Example Asset Store" in window.info.text()
     assert "may not be given away" in window.info.text()
+
+
+def test_own_work_needs_its_artist_and_isnt_given_away(tmp_path):
+    root = tmp_path / "M"
+    lf.Library.create(root)
+    result = importing.import_assets(root, [png(tmp_path / "tile.png")], "textures", "Tile",
+                                     importing.Details(category="floor", licence=lf.OWN_WORK))
+    assert "its artist (author) is needed" in result.refused[0][1]
+    result = importing.import_assets(root, [png(tmp_path / "tile.png")], "textures", "Tile",
+                                     importing.Details(category="floor", licence=lf.OWN_WORK,
+                                                       author="Richard E Rogers"))
+    a = result.assets[0]
+    assert lf.problems(a) == [] and not lf.may_give_away(a) and not lf.needs_credit(a)
+    assert "Own work" in licence_note(lf.OWN_WORK) or "own work" in licence_note(lf.OWN_WORK)
+
+
+def test_a_combined_map_is_the_metallic_and_roughness():
+    from master_library.roles import guess_role
+    assert guess_role("Rock_Wall_001_Combined.png") == "metallic_roughness"
+    assert guess_role("Rock_Wall_001_Emissive.png") == "emissive"
+    assert guess_role("Rock_Wall_001_Ambient occlusion.png") == "occlusion"
+    # (the role is the last word: a "Metal Floor" set's maps aren't all metallic)
+    roles = [guess_role(f"Metal_Floor_001_{k}.png") for k in
+             ("Color", "Normal", "Ambient occlusion", "Emissive", "Metallic", "Combined")]
+    assert roles == ["color", "normal", "occlusion", "emissive", "metallic",
+                     "metallic_roughness"]

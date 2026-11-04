@@ -18,7 +18,10 @@ TEXTURE_ROLES: dict[str, str] = {
 }
 # Words in file names that say a role (ambientCG's, Poly Haven's and others' namings).
 _ROLE_WORDS = (
-    ("metallic_roughness", ("metallicroughness", "roughnessmetallic", "orm", "arm", "mr")),
+    # (A "combined" map: occlusion in red, roughness in green, metallic in blue: glTF reads its
+    # green and blue as its metallic & roughness.)
+    ("metallic_roughness", ("metallicroughness", "roughnessmetallic", "orm", "arm", "mr",
+                            "combined")),
     ("color", ("color", "colour", "basecolor", "basecolour", "albedo", "diffuse", "diff",
                "col", "base", "basecol")),
     ("normal", ("normal", "normalgl", "normaldx", "nor", "norm", "nrm", "nor_gl", "normal_gl")),
@@ -34,9 +37,14 @@ def guess_role(filename: str) -> str:
     it is a kind Midgard doesn't use, like a height map)."""
     words = [w for w in re.split(r"[^a-z0-9]+", Path(filename).stem.lower()) if w]
     joined = "".join(words)
+    # The role word is usually last ("Metal_Floor_001_Emissive" is emissive, not metallic): the
+    # words are read from the end.
+    for word in reversed(words):
+        for role, names in _ROLE_WORDS:
+            if word in names:
+                return role
     for role, names in _ROLE_WORDS:
-        if any(w in names for w in words) or any(joined.endswith(n) for n in names
-                                                    if len(n) > 4):
+        if any(joined.endswith(n) for n in names if len(n) > 4):
             return role
     return ""
 
